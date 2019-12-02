@@ -43,6 +43,8 @@ class DataGenerator(object):
             raise Exception("parameter natoms_per_cluster should be an array of length {}".format(nclusters))
         if moved_atoms is not None and len(moved_atoms) != nclusters:
             raise Exception("parameter moved_atoms should be None or an array of length {}".format(nclusters))
+        if max(natoms_per_cluster) >= natoms:
+            raise Exception("parameter natoms_per_cluster should be less than the number of atoms in the system")
         self.natoms = natoms
         self.nclusters = nclusters
         self.natoms_per_cluster = natoms_per_cluster
@@ -271,9 +273,9 @@ class DataGenerator(object):
 
     def _to_cartesian(self, conf):
 
-        if "_rot" in self.feature_type:
+        if "rot" in self.feature_type :
             conf = self._random_rotation(conf)
-        if "_trans" in self.feature_type:
+        if "trans" in self.feature_type:
             conf = self._random_translation(conf)
 
         feats = np.empty((self.nfeatures))

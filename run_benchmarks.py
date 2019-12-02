@@ -55,18 +55,21 @@ def create_argparser():
     parser.add_argument('--visualize', type=_bool_lambda, help='Generate output figures', default=True)
     parser.add_argument('--iterations_per_model', type=int, help='', default=10)
     parser.add_argument('--accuracy_method', nargs='+', type=str, help='', default='mse')
+    parser.add_argument('--n_atoms', nargs='+', type=int, help='Number of atoms in toy model', default=100)
 
     return parser
 
 
-def do_run(args, extractor_types, noise_level, test_model, feature_type, accuracy_method):
+def do_run(args, extractor_types, noise_level, test_model, feature_type, accuracy_method, natoms):
     visualize = args.visualize
     output_dir = args.output_dir
-    fig_filename = "{feature_type}_{test_model}_{noise_level}noise_{accuracy_method}.svg".format(
+    fig_filename = "{feature_type}_{test_model}_{noise_level}noise_{natoms}atoms_{accuracy_method}.svg".format(
         feature_type=feature_type,
         test_model=test_model,
         noise_level=noise_level,
-        accuracy_method=accuracy_method)
+        accuracy_method=accuracy_method,
+        natoms=natoms
+    )
     best_processors = []
     for et in extractor_types:
         try:
@@ -77,7 +80,10 @@ def do_run(args, extractor_types, noise_level, test_model, feature_type, accurac
                                                accuracy_method=accuracy_method,
                                                iterations_per_model=args.iterations_per_model,
                                                noise_level=noise_level,
-                                               visualize=visualize,
+                                               # Disable visualization here since we all these
+                                               # individual performance plot take up disk space and don't give us much
+                                               visualize=False,
+                                               natoms=natoms,
                                                test_model=test_model)
             if visualize:
                 visualization.show_single_extractor_performance(postprocessors=postprocessors,
@@ -90,23 +96,39 @@ def do_run(args, extractor_types, noise_level, test_model, feature_type, accurac
             logger.exception(ex)
             logger.warn("Failed for extractor %s ", et)
             raise ex
+    best_processors = np.array(best_processors)
     if visualize:
         fig_filename = fig_filename.replace(".svg", "_{}.svg".format("-".join(extractor_types)))
-        visualization.show_all_extractors_performance(np.array(best_processors),
+        visualization.show_all_extractors_performance(best_processors,
                                                       extractor_types,
                                                       feature_type=feature_type,
                                                       filename=fig_filename,
                                                       output_dir=output_dir,
                                                       accuracy_method=accuracy_method)
+        return best_processors
 
 
 def run_all(args):
     extractor_types = _fix_extractor_type(args.extractor_type)
+    n_atoms = utils.make_list(args.n_atoms)
     for noise_level in utils.make_list(args.noise_level):
         for test_model in utils.make_list(args.test_model):
             for feature_type in utils.make_list(args.feature_type):
                 for accuracy_method in utils.make_list(args.accuracy_method):
-                    do_run(args, extractor_types, noise_level, test_model, feature_type, accuracy_method)
+                    best_processors = []
+                    for natoms in n_atoms:
+                        bp = do_run(args, extractor_types, noise_level,
+                                    test_model, feature_type, accuracy_method, natoms)
+                        best_processors.append(bp)
+                    if visualization and len(n_atoms) > 1:
+                        visualization.show_system_size_dependence(n_atoms=n_atoms,
+                                                                  postprocessors=np.array(best_processors),
+                                                                  extractor_types=extractor_types,
+                                                                  noise_level=noise_level,
+                                                                  test_model=test_model,
+                                                                  feature_type=feature_type,
+                                                                  output_dir=args.output_dir,
+                                                                  accuracy_method=accuracy_method)
 
 
 if __name__ == "__main__":
