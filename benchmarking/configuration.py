@@ -62,22 +62,43 @@ def create_rand_feature_extractors(extractor_kwargs):
     ]
 
 
-def create_RF_feature_extractors(extractor_kwargs, n_estimators=[10, 100, 200, 1000]):
-    extractors = []
-    for one_vs_rest in [True, False]:
-        suffix = "" if one_vs_rest else "_multiclass"
-        for nest in n_estimators:
-            extractors.append(
-                fe.RandomForestFeatureExtractor(
-                    name="{}-estimators{}".format(nest, suffix),
-                    classifier_kwargs={
-                        'n_estimators': nest
-                    },
-                    one_vs_rest=one_vs_rest,
-                    **extractor_kwargs)
-            )
-
+def _shuffle_and_shorten(extractors, random_state=6, max_number_extractors=12):
+    extractors = np.array(extractors)
+    if random_state is not None:
+        np.random.seed(random_state)
+    np.random.shuffle(extractors)
+    extractors = extractors[:max_number_extractors]
     return extractors
+
+
+def create_RF_feature_extractors(extractor_kwargs,
+                                 n_estimators=[10, 100, 1000],
+                                 min_samples_leaves=[0.25, 0.45, 1],
+                                 max_depths=[None, 1, 10, 100]):
+    extractors = []
+    for one_vs_rest in [False, True]:
+        # We only consider min samples leafs and max_depths if we have real multiclass
+        for md in [None] if one_vs_rest else max_depths:
+            for msl in [1] if one_vs_rest else min_samples_leaves:
+                suffix = "" if one_vs_rest else "_multiclass"
+                if md is not None:  # None is the default value
+                    suffix += "_max_depth{}".format(msl)
+                if msl > 1:  # 1 is the default vlaue
+                    suffix += "_max_depth{}".format(msl)
+                for nest in n_estimators:
+                    extractors.append(
+                        fe.RandomForestFeatureExtractor(
+                            name="{}-estimators{}".format(nest, suffix),
+                            classifier_kwargs={
+                                'n_estimators': nest,
+                                'min_samples_leaf': msl,
+                                'max_depth': md
+                            },
+                            one_vs_rest=one_vs_rest,
+                            **extractor_kwargs)
+                    )
+    return _shuffle_and_shorten(extractors)
+    # return extractors
 
 
 def create_PCA_feature_extractors(extractor_kwargs, variance_cutoffs=["auto", "1_components", "2_components", 50, 100]):
@@ -156,13 +177,16 @@ def create_MLP_feature_extractors(extractor_kwargs,
 
 def create_AE_feature_extractors(extractor_kwargs,
                                  alpha_hidden_layers=[
-                                     # (0.001, [1, ]),  # new
-                                     (0.001, [10, ]),
-                                     # (0.00001, [10, ]),  # new
+
+                                     (1e-2, "auto"),
+                                     (0.01, [10, ]),  # new
+                                     (0.001, [100, ]),
+                                     (0.00001, [100, ]),  # new
                                      (0.01, [10, 7, 5, 2, 5, 7, 10, ]),
-                                     (0.001, [10, 7, 5, 2, 5, 7, 10, ]),
-                                     (0.01, [20, 10, 7, 5, 2, 5, 7, 10, 20]),
-                                     (0.01, [20, 5, 20, ]),
+                                     # (0.001, [10, 7, 5, 2, 5, 7, 10, ]),
+                                     # (0.01, [20, 10, 7, 5, 2, 5, 7, 10, 20]),
+                                     # (0.01, [20, 5, 20, ]),
+                                     #
                                      # New values
                                      # (0.0001, [8, 2, 8, ]),
                                      # (0.0001, [16, ]),
@@ -178,26 +202,39 @@ def create_AE_feature_extractors(extractor_kwargs,
                                      # (0.01, [100, 25, 100, ]),
                                      # (0.1, [100, 25, 100, ]),
 
-                                 ]
+                                 ],
+                                 batch_sizes=["auto", 10, 100],  # 1000
+                                 # batch_sizes=["auto"],
+                                 learning_rate=["constant", "invscaling", "adaptive"],
+                                 # learning_rate=["adaptive"],
+                                 max_iters=[20, 200]  # 2000
+                                 # max_iters=[200],
                                  ):
     feature_extractors = []
     for alpha, layers in alpha_hidden_layers:
-        name = "{}-alpha_{}-layers".format(alpha, "x".join([str(l) for l in layers]))
-        feature_extractors.append(
-            fe.MlpAeFeatureExtractor(
-                name=name,
-                classifier_kwargs={
-                    'hidden_layer_sizes': layers,
-                    'max_iter': 200,
-                    'learning_rate': 'adaptive',
-                    'alpha': alpha,
-                    'solver': "adam",
-                    'early_stopping': True,
-                    'tol': 1e-2,
-                    'warm_start': False
-                },
-                activation="logistic",
-                use_reconstruction_for_lrp=True,
-                **extractor_kwargs)
-        )
-    return feature_extractors
+        should_do_detailed_search = True #alpha == 1e-3 and len(layers) == 1 and layers[0] == 10
+        for bs in batch_sizes if should_do_detailed_search else ["auto"]:
+            for lr in learning_rate if should_do_detailed_search else ["adaptive"]:
+                for mi in max_iters if should_do_detailed_search else [200]:
+                    name = "{}-alpha_{}-layers".format(alpha, "x".join([str(l) for l in layers]))
+                    if should_do_detailed_search:
+                        name += "_{}-batchsize_{}-maxiter_{}-learningrate".format(bs, mi, lr)
+                    feature_extractors.append(
+                        fe.MlpAeFeatureExtractor(
+                            name=name,
+                            classifier_kwargs={
+                                'hidden_layer_sizes': layers,
+                                'max_iter': mi,
+                                'learning_rate': lr,
+                                'batch_size': bs,
+                                'alpha': alpha,
+                                'solver': "adam",
+                                'early_stopping': True,
+                                'tol': 1e-2,
+                                'warm_start': False
+                            },
+                            activation="logistic",
+                            use_reconstruction_for_lrp=True,
+                            **extractor_kwargs)
+                    )
+    return _shuffle_and_shorten(feature_extractors)
