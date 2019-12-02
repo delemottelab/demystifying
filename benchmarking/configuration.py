@@ -205,27 +205,23 @@ def create_AE_feature_extractors(extractor_kwargs,
                                  ],
                                  batch_sizes=["auto", 10, 100],  # 1000
                                  # batch_sizes=["auto"],
-                                 learning_rate=["constant", "invscaling", "adaptive"],
-                                 # learning_rate=["adaptive"],
                                  max_iters=[20, 200]  # 2000
                                  # max_iters=[200],
                                  ):
     feature_extractors = []
     for alpha, layers in alpha_hidden_layers:
-        should_do_detailed_search = True #alpha == 1e-3 and len(layers) == 1 and layers[0] == 10
-        for bs in batch_sizes if should_do_detailed_search else ["auto"]:
-            for lr in learning_rate if should_do_detailed_search else ["adaptive"]:
-                for mi in max_iters if should_do_detailed_search else [200]:
+        for bs in batch_sizes:
+            for lr in ["adaptive"]:
+                for mi in max_iters:
                     name = "{}-alpha_{}-layers".format(alpha, "x".join([str(l) for l in layers]))
-                    if should_do_detailed_search:
-                        name += "_{}-batchsize_{}-maxiter_{}-learningrate".format(bs, mi, lr)
+                    name += "_{}-batchsize_{}-maxiter_{}-learningrate".format(bs, mi, lr)
                     feature_extractors.append(
                         fe.MlpAeFeatureExtractor(
                             name=name,
                             classifier_kwargs={
                                 'hidden_layer_sizes': layers,
                                 'max_iter': mi,
-                                'learning_rate': lr,
+                                'learning_rate': lr, #not used with the adam solver
                                 'batch_size': bs,
                                 'alpha': alpha,
                                 'solver': "adam",
