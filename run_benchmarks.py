@@ -111,9 +111,9 @@ def do_run(args, extractor_types, noise_level, test_model, feature_type, accurac
 def run_all(args):
     extractor_types = _fix_extractor_type(args.extractor_type)
     n_atoms = utils.make_list(args.n_atoms)
-    for noise_level in utils.make_list(args.noise_level):
-        for test_model in utils.make_list(args.test_model):
-            for feature_type in utils.make_list(args.feature_type):
+    for feature_type in utils.make_list(args.feature_type):
+        for noise_level in utils.make_list(args.noise_level):
+            for test_model in utils.make_list(args.test_model):
                 for accuracy_method in utils.make_list(args.accuracy_method):
                     best_processors = []
                     for natoms in n_atoms:

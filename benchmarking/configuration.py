@@ -221,7 +221,7 @@ def create_AE_feature_extractors(extractor_kwargs,
                             classifier_kwargs={
                                 'hidden_layer_sizes': layers,
                                 'max_iter': mi,
-                                'learning_rate': lr, #not used with the adam solver
+                                'learning_rate': lr,  # not used with the adam solver
                                 'batch_size': bs,
                                 'alpha': alpha,
                                 'solver': "adam",
