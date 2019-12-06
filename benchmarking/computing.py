@@ -62,10 +62,12 @@ def compute(extractor_type,
 
         finished_extractors = []
         for name in extractor_names:
-            if not overwrite and os.path.exists(modeldir):
+            if os.path.exists(modeldir):
                 filepath = "{}/{}/importance_per_residue.npy".format(modeldir, name)
                 existing_files = glob.glob(filepath)
-                if len(existing_files) > 0:
+                if overwrite and len(existing_files) > 0:
+                    logger.debug("File %s already exists. overwriting", existing_files[0])
+                elif len(existing_files) > 0:
                     logger.debug("File %s already exists. skipping computations", existing_files[0])
                     finished_extractors.append(name)
                 else:
