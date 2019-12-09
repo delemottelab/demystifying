@@ -363,24 +363,35 @@ def visualize(postprocessors,
         plt.clf()
 
 
+def _sort_by_accuracy(accuracy, xlabels, postprocessors):
+    mean_accuracy = accuracy.mean(axis=0)
+    sorted_indices = [i for i, a in sorted(enumerate(mean_accuracy), key=lambda tpl: tpl[1], reverse=True)]
+    return accuracy[:, sorted_indices], np.array(xlabels)[sorted_indices], postprocessors[:, sorted_indices]
+
+
 def _show_performance(postprocessors,
                       xlabels=None,
                       title=None,
                       filename=None,
                       accuracy_limits=None,
-                      supervised=False,
+                      plot_per_state_accuracy=False,
                       output_dir=None,
-                      accuracy_method=None):
+                      sort_by_accuracy=False,
+                      accuracy_method=None,
+                      width_factor=0.75):
     if len(postprocessors) == 0:
         return
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
-    nrows = 2 if supervised else 1
+
+    nrows = 2 if plot_per_state_accuracy else 1
     fig, axs = plt.subplots(nrows, 1, sharex=True, sharey=False, squeeze=False,
-                            figsize=(int(0.5 * postprocessors.shape[0]), 2 * nrows),
+                            figsize=(int(width_factor * postprocessors.shape[0]), 2 * nrows),
                             constrained_layout=True)
     fig.subplots_adjust(bottom=0.2)
     accuracy = utils.to_accuracy(postprocessors)
+    if sort_by_accuracy:
+        accuracy, xlabels, postprocessors = _sort_by_accuracy(accuracy, xlabels, postprocessors)
     ax0 = axs[0, 0]
     if title is not None:
         ax0.set_title(title)
@@ -395,7 +406,7 @@ def _show_performance(postprocessors,
     elif accuracy_method == 'relevant_fraction':
         accuracy_label = "Accuracy:\nignoring irrelevant"
     ax0.set_ylabel(accuracy_label)
-    if supervised:
+    if plot_per_state_accuracy:
         # Per state
         ax0.get_shared_y_axes().join(ax0, axs[1, 0])  # share y range with regular accuracy
         axs[1, 0].boxplot(utils.to_accuracy_per_cluster(postprocessors),
@@ -434,7 +445,8 @@ def show_single_extractor_performance(postprocessors,
                       xlabels=xlabels,
                       # title=extractor_type,
                       filename=filename,
-                      supervised=postprocessors[0, 0].extractor.supervised,
+                      sort_by_accuracy=True,
+                      plot_per_state_accuracy=postprocessors[0, 0].extractor.supervised,
                       output_dir=output_dir,
                       accuracy_method=accuracy_method)
 
@@ -460,9 +472,56 @@ def show_all_extractors_performance(postprocessors,
                       # title=title,
                       filename=filename,
                       accuracy_limits=[0.2, 1.1],
-                      supervised=supervised,
+                      plot_per_state_accuracy=supervised,
                       output_dir=output_dir,
+                      width_factor=0.4,
                       accuracy_method=accuracy_method)
+
+
+def show_system_size_dependence(n_atoms,
+                                postprocessors,
+                                extractor_types,
+                                test_model=None,
+                                noise_level=None,
+                                feature_type=None,
+                                filename=None,
+                                output_dir="output/benchmarking/",
+                                accuracy_method=None):
+    if len(postprocessors) == 0:
+        return
+    if filename is None:
+        filename = "{feature_type}_{test_model}_{noise_level}noise_{natoms}atoms_{accuracy_method}_ {extractor_types}.svg".format(
+            feature_type=feature_type,
+            test_model=test_model,
+            extractor_types="&".join(extractor_types),
+            noise_level=noise_level,
+            accuracy_method=accuracy_method,
+            natoms="{}to{}atoms".format(min(n_atoms), max(n_atoms))
+        )
+    fig, axs = plt.subplots(1, 1, sharex=True, sharey=False, squeeze=False,
+                            # figsize=(int(0.5 * postprocessors.shape[0]), 2 * nrows),
+                            constrained_layout=True)
+    ax = axs[0, 0]
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+    accuracy_label = "Accuracy"
+    if accuracy_method == 'mse':
+        accuracy_label = "Accuracy:\nfinding all"
+    elif accuracy_method == 'relevant_fraction':
+        accuracy_label = "Accuracy:\nignoring irrelevant"
+    ax.set_ylabel(accuracy_label)
+    ax.set_xlabel("Number of atoms in toy model")
+    ax.yaxis.set_major_formatter(FormatStrFormatter('%.2f'))
+    for extractor_idx, extractor in enumerate(extractor_types):
+        accuracy = utils.to_accuracy(postprocessors[:, extractor_idx])
+        y = accuracy.mean(axis=1)
+        ystd = accuracy.std(axis=1)
+        ax.plot(n_atoms, y, label=extractor)
+        ax.fill_between(n_atoms, y - ystd, y + ystd, color="gray", alpha=0.2)
+    plt.tight_layout(pad=0.3)
+    plt.legend()
+    plt.savefig(output_dir + filename)
+    plt.clf()
 
 
 def _to_settings_string(extractor):
@@ -472,11 +531,19 @@ def _to_settings_string(extractor):
         if alpha is not None:
             parts.append(utils.to_scientific_number_format(alpha))
         layers = extractor.classifier_kwargs.get('hidden_layer_sizes', (100,))
-        ls = []
-        for idx, l in enumerate(layers):
-            if idx == 0 or l < layers[idx - 1]:  # assuming decreasing layer size here, not showing decoding layers
-                ls.append(l)
-        parts.append("x".join([str(l) for l in ls]))
+        if isinstance(layers, str):
+            parts.append(layers)
+        else:
+            ls = []
+            for idx, l in enumerate(layers):
+                if idx == 0 or l < layers[idx - 1]:  # assuming decreasing layer size here, not showing decoding layers
+                    ls.append(l)
+            parts.append("x".join([str(l) for l in ls]))
+        if isinstance(extractor, fe.MlpAeFeatureExtractor):
+            batch_size = extractor.classifier_kwargs.get('batch_size', None)
+            # learning_rate = extractor.classifier_kwargs.get('learning_rate', None) #not relevant when solver = 'adam'
+            max_iter = extractor.classifier_kwargs.get('max_iter', None)
+            parts += [str(s) for s in [batch_size, max_iter]]
     elif isinstance(extractor, fe.RbmFeatureExtractor):
         learning_rate = extractor.classifier_kwargs.get('learning_rate', None)
         if learning_rate is not None:
@@ -488,6 +555,10 @@ def _to_settings_string(extractor):
         parts.append(str(nest))
         binary = extractor.one_vs_rest
         parts.append("BC" if binary else "MC")
+        min_samples_leaf = extractor.classifier_kwargs.get('min_samples_leaf', 1)
+        max_depth = extractor.classifier_kwargs.get('max_depth', None)
+        parts.append("{}".format(min_samples_leaf))
+        parts.append("{}".format(max_depth if max_depth is not None else "-"))
     elif isinstance(extractor, fe.PCAFeatureExtractor):
         cutoff = extractor.variance_cutoff
         if isinstance(cutoff, int) or isinstance(cutoff, float):

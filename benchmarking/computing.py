@@ -27,7 +27,8 @@ def compute(extractor_type,
             overwrite=False,
             accuracy_method='mse',
             displacement=1e-1,
-            visualize=True,
+            visualize=False,
+            natoms=100,
             noise_level=1e-2,  # [1e-2, 1e-2, 2e-1, 2e-1],
             output_dir="output/benchmarking/"):
     """
@@ -49,20 +50,24 @@ def compute(extractor_type,
                                                                  n_iterations=n_iterations)
     n_extractors = len(extractor_names)
     for iter in range(iterations_per_model):
-        modeldir = "{output_dir}/{extractor_type}/{feature_type}/{test_model}/noise-{noise_level}/iter-{iter}/".format(
+        modeldir = "{output_dir}/{extractor_type}/{feature_type}/{test_model}/noise-{noise_level}/atoms-{natoms}/iter-{iter}/".format(
             output_dir=output_dir,
             extractor_type=extractor_type,
             feature_type=feature_type,
             test_model=test_model,
             noise_level=noise_level,
-            iter=iter)
+            natoms=natoms,
+            iter=iter
+        )
 
         finished_extractors = []
         for name in extractor_names:
-            if not overwrite and os.path.exists(modeldir):
+            if os.path.exists(modeldir):
                 filepath = "{}/{}/importance_per_residue.npy".format(modeldir, name)
                 existing_files = glob.glob(filepath)
-                if len(existing_files) > 0:
+                if overwrite and len(existing_files) > 0:
+                    logger.debug("File %s already exists. overwriting", existing_files[0])
+                elif len(existing_files) > 0:
                     logger.debug("File %s already exists. skipping computations", existing_files[0])
                     finished_extractors.append(name)
                 else:
@@ -70,10 +75,11 @@ def compute(extractor_type,
             else:
                 os.makedirs(modeldir)
         needs_computations = len(finished_extractors) < n_extractors
-        dg = DataGenerator(natoms=100,
+        atoms_per_cluster = max(int(natoms / 10 + 0.5), 1)
+        dg = DataGenerator(natoms=natoms,
                            nclusters=3,
-                           natoms_per_cluster=[10, 10, 10],
-                           nframes_per_cluster=1200 if needs_computations else 2,
+                           natoms_per_cluster=[atoms_per_cluster, atoms_per_cluster, atoms_per_cluster],
+                           nframes_per_cluster=12 * natoms if needs_computations else 2,
                            # Faster generation for postprocessing purposes when we don't need the frames
                            test_model=test_model,
                            noise_natoms=None,
