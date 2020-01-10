@@ -94,8 +94,9 @@ class MlpFeatureExtractor(FeatureExtractor):
 
     def _normalize_relevance_per_frame(self, relevance_per_frame):
         for i in range(relevance_per_frame.shape[0]):
-            ind_negative = np.where(relevance_per_frame[i, :] < 0)[0]
-            relevance_per_frame[i, ind_negative] = 0
+            #Not removing negative relevance in per frame analysis
+            #ind_negative = np.where(relevance_per_frame[i, :] < 0)[0]
+            #relevance_per_frame[i, ind_negative] = 0
             relevance_per_frame[i, :] = (relevance_per_frame[i, :] - np.min(relevance_per_frame[i, :])) / \
                                         (np.max(relevance_per_frame[i, :]) - np.min(relevance_per_frame[i, :]) + 1e-9)
         return relevance_per_frame
