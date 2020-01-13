@@ -11,7 +11,6 @@ logging.basicConfig(
 import os
 import numpy as np
 from biopandas.pdb import PandasPdb
-import mdtraj as md
 from . import utils
 from . import filtering
 from . import data_projection as dp
@@ -359,12 +358,13 @@ class PerFrameImportancePostProcessor(PostProcessor):
     def persist(self):
         PostProcessor.persist(self)
         if self.per_frame_importance_outfile is not None and \
-                self.frame_importances is not None:
+                self.frame_importances is not None and self.pdb_file != None:
             with open(self.per_frame_importance_outfile, 'w') as of:
                 logger.info("Writing per frame importance to file %s", self.per_frame_importance_outfile)
                 self.to_vmd_file(of)
 
     def to_vmd_file(self, of):
+        import mdtraj as md
         """
         writing VMD script, see https://www.ks.uiuc.edu/Research/vmd/mailing_list/vmd-l/5001.html
         :return:
