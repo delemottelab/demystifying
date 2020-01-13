@@ -22,18 +22,18 @@ class FeatureExtractor(object):
                  samples=None,
                  labels=None,
                  scaling=True,
-                 filter_by_distance_cutoff=True,
+                 filter_by_distance_cutoff=False,
                  lower_bound_distance_cutoff=filtering.lower_bound_distance_cutoff_default,
                  upper_bound_distance_cutoff=filtering.upper_bound_distance_cutoff_default,
                  use_inverse_distances=True,
-                 n_splits=10,
-                 n_iterations=10,
+                 n_splits=3,
+                 n_iterations=5,
                  name='FeatureExtractor',
                  error_limit=None,
                  supervised=True,
                  remove_outliers=False,
                  label_names=None,
-                 shuffle_datasets=False):
+                 shuffle_datasets=True):
         if samples is None:
             raise Exception("Samples cannot be None")
         self.samples = samples

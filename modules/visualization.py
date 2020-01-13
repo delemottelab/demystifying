@@ -302,7 +302,7 @@ def extract_metrics(postprocessors):
 
 def visualize(postprocessors,
               show_importance=True,
-              show_performance=True,
+              show_performance=False,
               show_projected_data=False,
               outfile=None,
               highlighted_residues=None,
@@ -310,7 +310,6 @@ def visualize(postprocessors,
               show_average=False):
     """
     Plots the feature per residue.
-    TODO visualize features too with std etc
     :param show_average:
     :param highlighted_residues:
     :type mixed_classes: bool if frames can belong to multiple clusters/clusters
