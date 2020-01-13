@@ -376,7 +376,8 @@ def _show_performance(postprocessors,
                       plot_per_state_accuracy=False,
                       output_dir=None,
                       sort_by_accuracy=False,
-                      accuracy_method=None):
+                      accuracy_method=None,
+                      width_factor=0.75):
     if len(postprocessors) == 0:
         return
     if not os.path.exists(output_dir):
@@ -384,9 +385,7 @@ def _show_performance(postprocessors,
 
     nrows = 2 if plot_per_state_accuracy else 1
     fig, axs = plt.subplots(nrows, 1, sharex=True, sharey=False, squeeze=False,
-                            # figsize=(int(0.5 * postprocessors.shape[0]), 2 * nrows),
-                            figsize=(int(0.75 * postprocessors.shape[0]), 2 * nrows),
-                            # figsize=(int(8 * postprocessors.shape[0]), 2 * nrows),
+                            figsize=(int(width_factor * postprocessors.shape[0]), 2 * nrows),
                             constrained_layout=True)
     fig.subplots_adjust(bottom=0.2)
     accuracy = utils.to_accuracy(postprocessors)
@@ -474,6 +473,7 @@ def show_all_extractors_performance(postprocessors,
                       accuracy_limits=[0.2, 1.1],
                       plot_per_state_accuracy=supervised,
                       output_dir=output_dir,
+                      width_factor=0.4,
                       accuracy_method=accuracy_method)
 
 
@@ -540,9 +540,9 @@ def _to_settings_string(extractor):
             parts.append("x".join([str(l) for l in ls]))
         if isinstance(extractor, fe.MlpAeFeatureExtractor):
             batch_size = extractor.classifier_kwargs.get('batch_size', None)
-            learning_rate = extractor.classifier_kwargs.get('learning_rate', None)
+            # learning_rate = extractor.classifier_kwargs.get('learning_rate', None) #not relevant when solver = 'adam'
             max_iter = extractor.classifier_kwargs.get('max_iter', None)
-            parts += [str(s) for s in [batch_size, learning_rate, max_iter]]
+            parts += [str(s) for s in [batch_size, max_iter]]
     elif isinstance(extractor, fe.RbmFeatureExtractor):
         learning_rate = extractor.classifier_kwargs.get('learning_rate', None)
         if learning_rate is not None:
