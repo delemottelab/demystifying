@@ -9,7 +9,7 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-from modules import feature_extraction as fe
+from demystifying import feature_extraction as fe
 
 
 def get_feature_extractors_names(extractor_type, n_splits, n_iterations):

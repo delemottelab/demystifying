@@ -36,9 +36,8 @@ def _plot_highligthed_residues(highlighted_residues, ax, linestyles=['dashed', '
                            alpha=alpha)
         ax.legend()
     else:
-        for r in highlighted_residues:
-            ax.axvline(r, linestyle=linestyles[0], label=None, color=_blue, linewidth=linewidth,
-                       alpha=alpha)
+        for r in np.array(highlighted_residues).flatten():
+            ax.axvline(r, linestyle=linestyles[0], label=None, color=_blue, linewidth=linewidth, alpha=alpha)
 
 
 def _insert_gaps(x_val, y_val):

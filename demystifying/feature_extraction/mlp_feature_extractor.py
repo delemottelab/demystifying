@@ -8,7 +8,7 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
-import sklearn.neural_network
+from sklearn.neural_network import MLPClassifier, MLPRegressor
 
 from .. import relevance_propagation as relprop
 from .feature_extractor import FeatureExtractor
@@ -35,11 +35,6 @@ class MlpFeatureExtractor(FeatureExtractor):
                                   supervised=supervised,
                                   **kwargs)
         self.backend = "scikit-learn"  # Only available option for now, more to come probably
-        logger.debug("Initializing MLP with the following parameters:"
-                     " activation function %s, randomize %s, classifier_kwargs %s,"
-                     " per_frame_importance_outfile %s, backend %s, per_frame_importance_samples %s, one_vs_rest %s",
-                     activation, randomize, classifier_kwargs, per_frame_importance_outfile, self.backend,
-                     None if per_frame_importance_samples is None else per_frame_importance_samples.shape, one_vs_rest)
         if activation not in [relprop.relu, relprop.logistic_sigmoid]:
             Exception("Relevance propagation currently only supported for relu or logistic")
         self.activation = activation
@@ -57,7 +52,17 @@ class MlpFeatureExtractor(FeatureExtractor):
         self.per_frame_importance_outfile = per_frame_importance_outfile
         self.per_frame_importance_samples = per_frame_importance_samples
         self.per_frame_importance_labels = per_frame_importance_labels
-        self.one_vs_rest = one_vs_rest
+        if self.use_regression:
+            self.one_vs_rest = False
+        else:
+            self.one_vs_rest = one_vs_rest
+
+        logger.debug("Initializing MLP with the following parameters:"
+                     " activation function %s, randomize %s, classifier_kwargs %s,"
+                     " per_frame_importance_outfile %s, backend %s, per_frame_importance_samples %s, one_vs_rest %s",
+                     activation, randomize, classifier_kwargs, per_frame_importance_outfile, self.backend,
+                     None if per_frame_importance_samples is None else per_frame_importance_samples.shape,
+                     self.one_vs_rest)
 
     def _train_one_vs_rest(self, data, labels):
         n_clusters = labels.shape[1]
@@ -66,7 +71,7 @@ class MlpFeatureExtractor(FeatureExtractor):
         classifiers = []
 
         for i_cluster in range(n_clusters):
-            classifiers.append(sklearn.neural_network.MLPClassifier(**self.classifier_kwargs))
+            classifiers.append(self._create_classifier())
             binary_labels = np.zeros((n_points, 2))
             binary_labels[labels[:, i_cluster] == 1, 0] = 1
             binary_labels[labels[:, i_cluster] != 1, 1] = 1
@@ -87,15 +92,15 @@ class MlpFeatureExtractor(FeatureExtractor):
         if self.one_vs_rest:
             return self._train_one_vs_rest(train_set, train_labels)
         else:
-            classifier = sklearn.neural_network.MLPClassifier(**self.classifier_kwargs)
+            classifier = self._create_classifier()
             classifier.fit(train_set, train_labels)
         return classifier
 
     def _normalize_relevance_per_frame(self, relevance_per_frame):
         for i in range(relevance_per_frame.shape[0]):
-            #Not removing negative relevance in per frame analysis
-            #ind_negative = np.where(relevance_per_frame[i, :] < 0)[0]
-            #relevance_per_frame[i, ind_negative] = 0
+            # Not removing negative relevance in per frame analysis
+            # ind_negative = np.where(relevance_per_frame[i, :] < 0)[0]
+            # relevance_per_frame[i, ind_negative] = 0
             relevance_per_frame[i, :] = (relevance_per_frame[i, :] - np.min(relevance_per_frame[i, :])) / \
                                         (np.max(relevance_per_frame[i, :]) - np.min(relevance_per_frame[i, :]) + 1e-9)
         return relevance_per_frame
@@ -242,6 +247,10 @@ class MlpFeatureExtractor(FeatureExtractor):
                     raise Exception("Unsupported MLP backend {}".format(self.backend))
 
         return layers
+
+    def _create_classifier(self):
+        return MLPRegressor(**self.classifier_kwargs) if self.use_regression \
+            else MLPClassifier(**self.classifier_kwargs)
 
     def postprocessing(self, **kwargs):
         return PerFrameImportancePostProcessor(extractor=self,

@@ -12,7 +12,7 @@ import os
 import mdtraj as md
 import numpy as np
 import glob
-from modules import utils, filtering, feature_extraction as fe, visualization, traj_preprocessing as tp
+from demystifying import utils, filtering, feature_extraction as fe, visualization, traj_preprocessing as tp
 
 logger = logging.getLogger("beta2")
 utils.remove_outliers = False

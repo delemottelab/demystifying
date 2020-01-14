@@ -10,7 +10,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 import mdtraj as md
-from modules import feature_extraction as fe, visualization, traj_preprocessing as tp
+from demystifying import feature_extraction as fe, visualization, traj_preprocessing as tp
 
 logger = logging.getLogger("VSD")
 

@@ -38,8 +38,10 @@ class DataGenerator(object):
 
         if natoms < nclusters:
             raise Exception("Cannot have more clusters than atoms")
+        if isinstance(natoms_per_cluster, int):
+            natoms_per_cluster = np.zeros((nclusters,), dtype=int) + natoms_per_cluster
         if natoms_per_cluster is None or len(natoms_per_cluster) != nclusters:
-            raise Exception("parameter natoms_per_cluster should be an array of length {}".format(nclusters))
+            raise Exception("parameter natoms_per_cluster should be an array of length {} or an integer".format(nclusters))
         if moved_atoms is not None and len(moved_atoms) != nclusters:
             raise Exception("parameter moved_atoms should be None or an array of length {}".format(nclusters))
         if max(natoms_per_cluster) >= natoms:

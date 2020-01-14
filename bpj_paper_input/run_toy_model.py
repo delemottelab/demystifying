@@ -9,8 +9,8 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-from modules import feature_extraction as fe, visualization
-from modules.data_generation import DataGenerator
+from demystifying import feature_extraction as fe, visualization
+from demystifying.data_generation import DataGenerator
 
 logger = logging.getLogger("dataGenNb")
 

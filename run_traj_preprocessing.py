@@ -13,7 +13,7 @@ import mdtraj as md
 import os
 import numpy as np
 import argparse
-from modules import traj_preprocessing as tp
+from demystifying import traj_preprocessing as tp
 
 logger = logging.getLogger("runPreprocessing")
 

@@ -17,7 +17,7 @@ identity = "identity"
 logger = logging.getLogger("relevance_propagation")
 
 """
-TODO implement more activation functions or import another library for this, see for example https://github.com/sebastian-lapuschkin/lrp_toolbox/tree/master/python/modules
+TODO implement more activation functions or import another library for this, see for example https://github.com/sebastian-lapuschkin/lrp_toolbox/tree/master/python/demystifying
 Heavily inspired by http://www.heatmapping.org/tutorial/, visited 2019-05-02
 """
 

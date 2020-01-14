@@ -3,39 +3,42 @@
 This repository contains code for analyzing molecular simulations data, mainly using machine learning methods.  
 
 # Dependencies
- * Python 2.7
+ * Python >= 2.7
  * Scikit-learn with its standard dependencies (numpy, scipy etc.)
- * MDTraj (only for preprocessing)
  * biopandas (only for postprocessing)
+ * MDTraj (only for a preprocessing when writing per frame importance)
+ 
  
 We are working on upgrading the project to python 3 as well as enabling installation of dependencies via package managers such as conda, pip and similar. 
 
 # Using the code
 
 ## As a standalone library
-Include the __modules__ library in your pyton path or import it directly in your python project. Below is an example.
+Include the __demystifying__ module in your pyton path or import it directly in your python project. Below is an example.
+
 ### Example code
+
+See demo.py for a working example with toy model data.
+
 ```python
-from modules import feature_extraction as fe, visualization
-... 
-Load your data samples (input features) and labels (cluster indices) here 
-...
+from demystifying import feature_extraction as fe, visualization
+"""
+Load your data samples (input features) and labels (cluster indices etc.) here 
+"""
 
 # Create a feature extractor. All extractors implement the same methods, but in this demo we use a Random Forest 
-extractor = fe.RandomForestFeatureExtractor(samples, labels, classifier_kwargs={'n_estimators': 1000})
+extractor = fe.RandomForestFeatureExtractor(samples, labels)
 extractor.extract_features()
 
 # Do postprocessing to average the importance per feature into importance per residues
 # As well as highlight important residues on a protein structure
-postprocessor = extractor.postprocessing(working_dir="output/", pdb_file="input/protein.pdb")
+postprocessor = extractor.postprocessing(working_dir="output/")
 postprocessor.average()
 postprocessor.evaluate_performance()
 postprocessor.persist()
 
 # Visualize the importance per residue with standard functionality
-visualization.visualize([[postprocessor]],
-                        show_importance=True,
-                        outfile="output/importance_per_residue.png")
+visualization.visualize([[postprocessor]])
 
 ```
 
@@ -51,12 +54,21 @@ Start __run_benchmarks.py__ to run the benchmarks discussed in the paper. This c
 __run_toy_model__ contains a demo on how to launch single instances of the toy model. This script is currently not maintained.
 
 # Citing this work
-Either cite the code with DOI [10.5281/zenodo.3269704](https://doi.org/10.5281/zenodo.3269704) and/or our paper (__doi to come__).
+Please cite the following paper:
+
+Fleetwood, Oliver, et al. "Molecular insights from conformational ensembles via machine learning." Biophysical Journal (2019). 
+[10.1016/j.bpj.2019.12.016](https://doi.org/10.1016/j.bpj.2019.12.016)
+
+
+The code is also citable with DOI [10.5281/zenodo.3269704](https://doi.org/10.5281/zenodo.3269704).
 
 # Support
 Please open an issue or contact oliver.fleetwood (at) gmail.com it you have any questions or comments about the code. 
 
 # Checklist for interpreting molecular simulations with machine learning 
+
+---
+
 1. Identify the problem to investigate
 
 2. Decide if you should use supervised or unsupervised machine learning (or both)
@@ -95,3 +107,4 @@ Please open an issue or contact oliver.fleetwood (at) gmail.com it you have any 
 
 10. If necessary, iterate over steps 3-9 with different features, ML methods and hyperparameters 
 
+---
