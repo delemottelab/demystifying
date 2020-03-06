@@ -23,7 +23,7 @@ def filter_by_distance_cutoff(data,
     """
 
     number_of_features = data.shape[1]
-    logger.info("Number of features before distance cutoff based filtering is %s", number_of_features)
+    logger.debug("Number of features before distance cutoff based filtering is %s", number_of_features)
 
     if inverse_distances:
         data = 1 / data
@@ -35,7 +35,7 @@ def filter_by_distance_cutoff(data,
         if data_min <= lower_bound_cutoff and data_max >= upper_bound_cutoff:
             data_filtered_ind.append(i)
 
-    logger.info("Number of features after distance cutoff based filtering is %s", len(data_filtered_ind))
+    logger.debug("Number of features after distance cutoff based filtering is %s", len(data_filtered_ind))
 
     data_filtered = data[:, data_filtered_ind]
     indices_for_filtering = np.arange(0, data.shape[1], 1)

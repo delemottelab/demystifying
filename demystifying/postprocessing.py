@@ -132,7 +132,7 @@ class PostProcessor(object):
         Save .npy files of the different averages and pdb files with the beta column set to importance
         :return: itself
         """
-        directory = self.working_dir + "/{}/".format(self.extractor.name)
+        directory = self.get_output_dir()
 
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -179,12 +179,15 @@ class PostProcessor(object):
         else:
             return None
 
+    def get_output_dir(self):
+        return self.working_dir + "/{}/".format(self.extractor.name)
+
     def load(self):
         """
         Loads files dumped by the 'persist' method
         :return: itself
         """
-        directory = self.working_dir + "/{}/".format(self.extractor.name)
+        directory = self.get_output_dir()
 
         if not os.path.exists(directory):
             return self
@@ -335,7 +338,7 @@ class PostProcessor(object):
                 importance = 0
             atom.at[i, 'b_factor'] = importance
         if len(missing_residues) > 0:
-            logger.warn("importance is None for residues %s", set(missing_residues))
+            logger.warn("importance is None for residues %s", [r for r in sorted(set(missing_residues))])
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
         return self

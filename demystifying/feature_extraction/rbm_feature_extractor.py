@@ -52,7 +52,7 @@ class RbmFeatureExtractor(FeatureExtractor):
 
     def get_feature_importance(self, classifier, data, labels):
         logger.debug("Extracting feature importance using RBM ...")
-        logger.info("RBM psuedo-loglikelihood: " + str(classifier.score_samples(data).mean()))
+        logger.debug("RBM psuedo-loglikelihood: " + str(classifier.score_samples(data).mean()))
         if self.relevance_method == "from_lrp":
             nframes, nfeatures = data.shape
 

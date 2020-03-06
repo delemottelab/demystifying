@@ -79,7 +79,7 @@ class FeatureExtractor(object):
         Split the data into n_splits training and test sets
         """
         if self.n_splits < 2:
-            logger.info("Using all data in training and validation sets")
+            logger.debug("Using all data in training and validation sets")
             all_indices = np.empty((1, len(self.samples)))
             for i in range(len(self.samples)):
                 all_indices[0, i] = i
