@@ -338,7 +338,7 @@ class PostProcessor(object):
                 importance = 0
             atom.at[i, 'b_factor'] = importance
         if len(missing_residues) > 0:
-            logger.warn("importance is None for residues %s", [r for r in sorted(set(missing_residues))])
+            logger.debug("importance is None for residues %s", [r for r in sorted(set(missing_residues))])
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
         return self
