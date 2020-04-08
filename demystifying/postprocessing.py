@@ -9,6 +9,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
+from operator import itemgetter
 from biopandas.pdb import PandasPdb
 from . import utils
 from . import filtering
@@ -44,7 +45,7 @@ class PostProcessor(object):
         self.std_feature_importances = extractor.std_feature_importance
         self.supervised = extractor.supervised
         self.cluster_indices = extractor.cluster_indices
-        self.nclusters = extractor.labels.shape[1]
+        self.nclusters = 1 if extractor.labels is None else extractor.labels.shape[1]
         self.working_dir = working_dir
         if self.working_dir is None:
             self.working_dir = os.getcwd()
@@ -126,6 +127,23 @@ class PostProcessor(object):
             self.compute_accuracy()
 
         return self
+
+    def get_important_features(self, states=None, sort=True):
+        """
+        :param states: (optional) the indices of the states
+        :param sort: (optional) sort the features by their importance
+        :return: np.array of shape (n_features, 2) with entries (feature_index, importance)
+        """
+        fi = self.feature_importances
+        if states is not None and self.supervised:
+            fi = fi[:, states]
+        fi = fi.sum(axis=1)
+        fi, _ = utils.rescale_feature_importance(fi)
+        fi = fi.squeeze()
+        fi = [(e, i) for (e, i) in enumerate(fi)]
+        if sort:
+            fi = [(e, i) for (e, i) in sorted(fi, key=itemgetter(1), reverse=True)]
+        return np.array(fi)
 
     def persist(self):
         """
@@ -272,8 +290,11 @@ class PostProcessor(object):
         """
         Computes separation of clusters in the projected space given by the feature importances
         """
+        if self.extractor.labels is None:
+            logger.warning("Cannot compute projection classification entropy without labels")
+            return
         if self.extractor.mixed_classes:
-            logger.info(
+            logger.warning(
                 "Cannot compute projection classification entropy for dataset where not all frames belong to a unique cluster/state.")
             return
 

@@ -41,7 +41,8 @@ class DataGenerator(object):
         if isinstance(natoms_per_cluster, int):
             natoms_per_cluster = np.zeros((nclusters,), dtype=int) + natoms_per_cluster
         if natoms_per_cluster is None or len(natoms_per_cluster) != nclusters:
-            raise Exception("parameter natoms_per_cluster should be an array of length {} or an integer".format(nclusters))
+            raise Exception(
+                "parameter natoms_per_cluster should be an array of length {} or an integer".format(nclusters))
         if moved_atoms is not None and len(moved_atoms) != nclusters:
             raise Exception("parameter moved_atoms should be None or an array of length {}".format(nclusters))
         if max(natoms_per_cluster) >= natoms:
@@ -55,6 +56,7 @@ class DataGenerator(object):
         self.noise_natoms = noise_natoms
         self.displacement = displacement
         self.feature_type = feature_type
+        self.feature_to_resids = None
         if self.feature_type == 'inv-dist':
             self.nfeatures = int(self.natoms * (self.natoms - 1) / 2)
         elif self.feature_type.startswith('cartesian'):
@@ -241,7 +243,7 @@ class DataGenerator(object):
         return conf
 
     def _to_inv_dist(self, conf):
-
+        feature_to_resids = []
         feats = np.empty((self.nfeatures))
         idx = 0
         for n1, coords1 in enumerate(conf):
@@ -249,12 +251,21 @@ class DataGenerator(object):
                 coords2 = conf[n2]
                 feats[idx] = 1 / np.linalg.norm(coords1 - coords2 + self._delta)
                 idx += 1
-
+                feature_to_resids.append([n1, n2])
+        self.feature_to_resids = np.array(feature_to_resids)
         return feats
 
     def _to_compact_dist(self, conf):
         if self.natoms < 4:
             return self._to_inv_dist(conf)
+        feature_to_resids = [
+            [0, 1],
+            [0, 2],
+            [0, 3],
+            [1, 2],
+            [1, 3],
+            [2, 3]
+        ]
         feats = np.empty((self.nfeatures))
         feats[0] = 1 / np.linalg.norm(conf[0] - conf[1] + self._delta)
         feats[1] = 1 / np.linalg.norm(conf[0] - conf[2] + self._delta)
@@ -270,25 +281,33 @@ class DataGenerator(object):
             feats[idx + 1] = 1 / np.linalg.norm(conf[n] - conf[n - 3] + self._delta)
             feats[idx + 2] = 1 / np.linalg.norm(conf[n] - conf[n - 2] + self._delta)
             feats[idx + 3] = 1 / np.linalg.norm(conf[n] - conf[n - 1] + self._delta)
+            feature_to_resids.append([n - 4, n])
+            feature_to_resids.append([n - 3, n])
+            feature_to_resids.append([n - 2, n])
+            feature_to_resids.append([n - 1, n])
+        self.feature_to_resids = np.array(feature_to_resids)
         return feats
 
     def _to_cartesian(self, conf):
 
-        if "rot" in self.feature_type :
+        if "rot" in self.feature_type:
             conf = self._random_rotation(conf)
         if "trans" in self.feature_type:
             conf = self._random_translation(conf)
-
+        feature_to_resids = []
         feats = np.empty((self.nfeatures))
         idx = 0
         for n1, coords1 in enumerate(conf):
             feats[idx] = coords1[0]  # x
             idx += 1
+            feature_to_resids.append([n1])
             feats[idx] = coords1[1]  # y
             idx += 1
+            feature_to_resids.append([n1])
             feats[idx] = coords1[2]  # z
             idx += 1
-
+            feature_to_resids.append([n1])
+        self.feature_to_resids = np.array(feature_to_resids)
         return feats
 
     def _random_rotation(self, xyz):
@@ -315,34 +334,6 @@ class DataGenerator(object):
 
         return xyz
 
-    def feature_to_resids(self):
-
-        if self.feature_type == 'inv-dist':
-            return None  # TODO fix later; default anyway
-        elif self.feature_type.startswith("cartesian"):
-            mapping = []
-            for a in range(self.natoms):
-                mapping.append([a, a])  # x
-                mapping.append([a, a])  # y
-                mapping.append([a, a])  # z
-            return np.array(mapping)
-        elif self.feature_type.startswith('compact-dist') and self.natoms > 3:
-            mapping = [
-                [0, 1],
-                [0, 2],
-                [0, 3],
-                [1, 2],
-                [1, 3],
-                [2, 3]
-            ]
-            for a in range(4, self.natoms):
-                mapping.append([a - 4, a])  # x
-                mapping.append([a - 3, a])  # x
-                mapping.append([a - 2, a])  # y
-                mapping.append([a - 1, a])  # z
-            return np.array(mapping)
-        else:
-            raise Exception("Unknown feature type {}".format(self.feature_type))
 
     def _save_xyz(self, xyz_output_dir, filename, conf, moved_atoms=None, scale=10):
         """

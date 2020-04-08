@@ -150,7 +150,7 @@ def check_for_overfit(data_scaled, clustering_prob, classifier):
     return error
 
 
-def rescale_feature_importance(feature_importance, std_feature_importance):
+def rescale_feature_importance(feature_importance, std_feature_importance=None):
     """
     Min-max rescale feature importances
     :param feature_importance: array of dimension nfeatures * nstates
@@ -161,7 +161,8 @@ def rescale_feature_importance(feature_importance, std_feature_importance):
     logger.debug("Rescaling feature importances ...")
     if len(feature_importance.shape) == 1:
         feature_importance = feature_importance[:, np.newaxis]
-        std_feature_importance = std_feature_importance[:, np.newaxis]
+        if std_feature_importance is not None:
+            std_feature_importance = std_feature_importance[:, np.newaxis]
     n_states = feature_importance.shape[1]
     n_features = feature_importance.shape[0]
 
@@ -175,7 +176,8 @@ def rescale_feature_importance(feature_importance, std_feature_importance):
         if scale < 1e-9:
             scale = max(scale, 1e-9)
         feature_importance[indices_not_filtered, i] = (feature_importance[indices_not_filtered, i] - offset) / scale
-        std_feature_importance[indices_not_filtered, i] /= scale
+        if std_feature_importance is not None:
+            std_feature_importance[indices_not_filtered, i] /= scale
 
     return feature_importance, std_feature_importance
 

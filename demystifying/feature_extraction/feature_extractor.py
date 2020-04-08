@@ -103,8 +103,8 @@ class FeatureExtractor(object):
         train_set = self.samples[train_ind, :]
         test_set = self.samples[test_ind, :]
 
-        test_labels = self.labels[test_ind, :]
-        train_labels = self.labels[train_ind, :]
+        test_labels = None if self.labels is None else self.labels[test_ind, :]
+        train_labels = None if self.labels is None else self.labels[train_ind, :]
 
         return train_set, test_set, train_labels, test_labels
 
