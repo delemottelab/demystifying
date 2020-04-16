@@ -227,7 +227,7 @@ class PostProcessor(object):
         if self.feature_to_resids is None:  # Can be useful to override this in postprocesseing
             self.feature_to_resids = self._load_if_exists(directory + "feature_to_resids.npy")
 
-        np.unique(np.asarray(self.feature_to_resids.flatten()))
+        #np.unique(np.asarray(self.feature_to_resids.flatten()))
         return self
 
     def _map_feature_to_resids(self):
