@@ -111,8 +111,21 @@ class FeatureExtractor(object):
     def train(self, train_set, train_labels):
         pass
 
+    def _train_unsupervised_methods_per_class(self, train_set, train_labels):
+        # Compute unsupervised learning per cluster
+        return np.array([
+            self.train(train_set[train_labels[:, cl] == 1], None)
+            for cl in range(self.n_clusters)
+        ])
+
     def get_feature_importance(self, model, samples, labels):
         pass
+
+    def _get_feature_importance_for_unsupervised_per_class(self, model, samples, labels):
+        imps = np.empty((samples.shape[1], len(model)))
+        for cl in range(self.n_clusters):
+            imps[:, cl] = self.get_feature_importance(model[cl], samples[labels[:, cl] == 1], None)
+        return imps
 
     def extract_features(self):
 

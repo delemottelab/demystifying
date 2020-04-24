@@ -20,6 +20,7 @@ logger = logging.getLogger("rbm")
 class RbmFeatureExtractor(FeatureExtractor):
 
     def __init__(self,
+                 supervised=False,
                  name="RBM",
                  randomize=True,
                  relevance_method="from_lrp",
@@ -30,7 +31,7 @@ class RbmFeatureExtractor(FeatureExtractor):
                  **kwargs):
 
         FeatureExtractor.__init__(self,
-                                  supervised=False,
+                                  supervised=supervised,
                                   name=name,
                                   **kwargs)
         self.relevance_method = relevance_method
@@ -45,31 +46,28 @@ class RbmFeatureExtractor(FeatureExtractor):
                      randomize, relevance_method, relevance_method, variance_cutoff, classifier_kwargs)
 
     def train(self, train_set, train_labels):
-        logger.debug("Training RBM with %s samples and %s features ...", train_set.shape[0], train_set.shape[1])
-        classifier = BernoulliRBM(**self.classifier_kwargs)
-        classifier.fit(train_set)
-        return classifier
+        if self.supervised and train_labels is not None:
+            return self._train_unsupervised_methods_per_class(train_set, train_labels)
+        else:
+            model = BernoulliRBM(**self.classifier_kwargs)
+            model.fit(train_set)
+            return model
 
-    def get_feature_importance(self, classifier, data, labels):
-        logger.debug("Extracting feature importance using RBM ...")
-        logger.debug("RBM psuedo-loglikelihood: " + str(classifier.score_samples(data).mean()))
+    def get_feature_importance(self, model, samples, labels):
+        if self.supervised and labels is not None:
+            return self._get_feature_importance_for_unsupervised_per_class(model, samples, labels)
+        logger.debug("RBM psuedo-loglikelihood: " + str(model.score_samples(samples).mean()))
         if self.relevance_method == "from_lrp":
-            nframes, nfeatures = data.shape
+            nframes, nfeatures = samples.shape
 
-            labels_propagation = classifier.transform(data)  # same as perfect classification
+            labels_propagation = model.transform(samples)  # same as perfect classification
 
             # Calculate relevance
             # see https://scikit-learn.org/stable/modules/neural_networks_unsupervised.html
-            layers = self._create_layers(classifier)
+            layers = self._create_layers(model)
 
             propagator = relprop.RelevancePropagator(layers)
-            relevance = propagator.propagate(data, labels_propagation)
-
-            # Average relevance per cluster
-            nclusters = labels.shape[1]
-
-            result = np.zeros((nfeatures, nclusters))
-            frames_per_cluster = np.zeros((nclusters))
+            relevance = propagator.propagate(samples, labels_propagation)
 
             # Rescale relevance according to min and max relevance in each frame
             logger.debug("Rescaling feature importance extracted using RBM in each frame between min and max ...")
@@ -79,6 +77,14 @@ class RbmFeatureExtractor(FeatureExtractor):
                 relevance[i, ind_negative] = 0
                 relevance[i, :] = (relevance[i, :] - np.min(relevance[i, :])) / (
                         np.max(relevance[i, :]) - np.min(relevance[i, :]) + 1e-9)
+
+            if self.supervised:
+                return relevance
+            # Average relevance per cluster
+            nclusters = labels.shape[1]
+
+            result = np.zeros((nfeatures, nclusters))
+            frames_per_cluster = np.zeros((nclusters))
 
             for frame_idx, frame in enumerate(labels):
                 cluster_idx = labels[frame_idx].argmax()
@@ -93,8 +99,8 @@ class RbmFeatureExtractor(FeatureExtractor):
         elif self.relevance_method == "from_components":
 
             # Extract components and compute their variance
-            components = classifier.components_
-            projection = scipy.special.expit(np.matmul(data, components.T))
+            components = model.components_
+            projection = scipy.special.expit(np.matmul(samples, components.T))
             components_var = projection.var(axis=0)
 
             # Sort components according to their variance
