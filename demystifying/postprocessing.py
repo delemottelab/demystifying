@@ -41,6 +41,7 @@ class PostProcessor(object):
         :param feature_to_resids: an array of dimension nfeatures*2 which tells which two residues are involved in a feature
         """
         self.extractor = extractor
+        self.name = extractor.name
         self.feature_importances = extractor.feature_importance
         self.std_feature_importances = extractor.std_feature_importance
         self.supervised = extractor.supervised

@@ -79,7 +79,7 @@ class RbmFeatureExtractor(FeatureExtractor):
                         np.max(relevance[i, :]) - np.min(relevance[i, :]) + 1e-9)
 
             if self.supervised:
-                return relevance
+                return relevance.mean(axis=0)
             # Average relevance per cluster
             nclusters = labels.shape[1]
 
