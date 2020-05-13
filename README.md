@@ -51,7 +51,7 @@ Start __run_benchmarks.py__ to run the benchmarks discussed in the paper. This c
 __run_toy_model__ contains a demo on how to launch single instances of the toy model. This script is currently not maintained.
 
 # Citing this work
-Either cite the code with DOI [10.5281/zenodo.3269704](https://doi.org/10.5281/zenodo.3269704) and/or our paper (__doi to come__).
+Either cite the code with DOI [10.5281/zenodo.3269704](https://doi.org/10.5281/zenodo.3269704) and/or our paper with DOI [10.1016/j.bpj.2019.12.016](https://doi.org/10.1016/j.bpj.2019.12.016).
 
 # Support
 Please open an issue or contact oliver.fleetwood (at) gmail.com it you have any questions or comments about the code. 
