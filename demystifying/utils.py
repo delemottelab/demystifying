@@ -81,9 +81,15 @@ def scale(data, remove_outliers=False):
     return data_scaled, scaler
 
 
-def format_labels(labels):
+def format_labels(labels, use_regression):
     if labels is None:
         return None, None
+    elif use_regression:
+        labels = np.array(labels)
+        if len(labels.shape) > 1:
+            return labels, None
+        else:
+            return labels[:, np.newaxis], None
     elif isinstance(labels, list) or len(labels.shape) == 1:
         labels = create_class_labels(labels)
         cluster_indices = np.copy(labels)
@@ -144,7 +150,7 @@ def check_for_overfit(data_scaled, clustering_prob, classifier):
     return error
 
 
-def rescale_feature_importance(relevances, std_relevances):
+def rescale_feature_importance(feature_importance, std_feature_importance=None):
     """
     Min-max rescale feature importances
     :param feature_importance: array of dimension nfeatures * nstates
@@ -152,26 +158,28 @@ def rescale_feature_importance(relevances, std_relevances):
     :return: rescaled versions of the inputs with values between 0 and 1
     """
 
-    logger.info("Rescaling feature importances ...")
-    if len(relevances.shape) == 1:
-        relevances = relevances[:, np.newaxis]
-        std_relevances = std_relevances[:, np.newaxis]
-    n_states = relevances.shape[1]
-    n_features = relevances.shape[0]
+    logger.debug("Rescaling feature importances ...")
+    if len(feature_importance.shape) == 1:
+        feature_importance = feature_importance[:, np.newaxis]
+        if std_feature_importance is not None:
+            std_feature_importance = std_feature_importance[:, np.newaxis]
+    n_states = feature_importance.shape[1]
+    n_features = feature_importance.shape[0]
 
     # indices of residues pairs which were not filtered during features filtering
-    indices_not_filtered = np.where(relevances[:, 0] >= 0)[0]
+    indices_not_filtered = np.where(feature_importance[:, 0] >= 0)[0]
 
     for i in range(n_states):
-        max_val, min_val = relevances[indices_not_filtered, i].max(), relevances[indices_not_filtered, i].min()
+        max_val, min_val = feature_importance[indices_not_filtered, i].max(), feature_importance[indices_not_filtered, i].min()
         scale = max_val - min_val
         offset = min_val
         if scale < 1e-9:
             scale = max(scale, 1e-9)
-        relevances[indices_not_filtered, i] = (relevances[indices_not_filtered, i] - offset) / scale
-        std_relevances[indices_not_filtered, i] /= scale
+        feature_importance[indices_not_filtered, i] = (feature_importance[indices_not_filtered, i] - offset) / scale
+        if std_feature_importance is not None:
+            std_feature_importance[indices_not_filtered, i] /= scale
 
-    return relevances, std_relevances
+    return feature_importance, std_feature_importance
 
 
 def get_default_feature_to_resids(n_features):

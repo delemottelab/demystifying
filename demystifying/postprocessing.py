@@ -9,6 +9,7 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import os
 import numpy as np
+from operator import itemgetter
 from biopandas.pdb import PandasPdb
 from . import utils
 from . import filtering
@@ -40,11 +41,12 @@ class PostProcessor(object):
         :param feature_to_resids: an array of dimension nfeatures*2 which tells which two residues are involved in a feature
         """
         self.extractor = extractor
+        self.name = extractor.name
         self.feature_importances = extractor.feature_importance
         self.std_feature_importances = extractor.std_feature_importance
         self.supervised = extractor.supervised
         self.cluster_indices = extractor.cluster_indices
-        self.nclusters = extractor.labels.shape[1]
+        self.nclusters = 1 if extractor.labels is None else extractor.labels.shape[1]
         self.working_dir = working_dir
         if self.working_dir is None:
             self.working_dir = os.getcwd()
@@ -127,12 +129,29 @@ class PostProcessor(object):
 
         return self
 
+    def get_important_features(self, states=None, sort=True):
+        """
+        :param states: (optional) the indices of the states
+        :param sort: (optional) sort the features by their importance
+        :return: np.array of shape (n_features, 2) with entries (feature_index, importance)
+        """
+        fi = self.feature_importances
+        if states is not None and self.supervised:
+            fi = fi[:, states]
+        fi = fi.sum(axis=1)
+        fi, _ = utils.rescale_feature_importance(fi)
+        fi = fi.squeeze()
+        fi = [(e, i) for (e, i) in enumerate(fi)]
+        if sort:
+            fi = [(e, i) for (e, i) in sorted(fi, key=itemgetter(1), reverse=True)]
+        return np.array(fi)
+
     def persist(self):
         """
         Save .npy files of the different averages and pdb files with the beta column set to importance
         :return: itself
         """
-        directory = self.working_dir + "/{}/".format(self.extractor.name)
+        directory = self.get_output_dir()
 
         if not os.path.exists(directory):
             os.makedirs(directory)
@@ -179,12 +198,15 @@ class PostProcessor(object):
         else:
             return None
 
+    def get_output_dir(self):
+        return self.working_dir + "/{}/".format(self.extractor.name)
+
     def load(self):
         """
         Loads files dumped by the 'persist' method
         :return: itself
         """
-        directory = self.working_dir + "/{}/".format(self.extractor.name)
+        directory = self.get_output_dir()
 
         if not os.path.exists(directory):
             return self
@@ -206,7 +228,7 @@ class PostProcessor(object):
         if self.feature_to_resids is None:  # Can be useful to override this in postprocesseing
             self.feature_to_resids = self._load_if_exists(directory + "feature_to_resids.npy")
 
-        np.unique(np.asarray(self.feature_to_resids.flatten()))
+        #np.unique(np.asarray(self.feature_to_resids.flatten()))
         return self
 
     def _map_feature_to_resids(self):
@@ -269,8 +291,11 @@ class PostProcessor(object):
         """
         Computes separation of clusters in the projected space given by the feature importances
         """
+        if self.extractor.labels is None:
+            logger.warning("Cannot compute projection classification entropy without labels")
+            return
         if self.extractor.mixed_classes:
-            logger.info(
+            logger.warning(
                 "Cannot compute projection classification entropy for dataset where not all frames belong to a unique cluster/state.")
             return
 
@@ -335,7 +360,7 @@ class PostProcessor(object):
                 importance = 0
             atom.at[i, 'b_factor'] = importance
         if len(missing_residues) > 0:
-            logger.warn("importance is None for residues %s", set(missing_residues))
+            logger.debug("importance is None for residues %s", [r for r in sorted(set(missing_residues))])
         pdb.to_pdb(path=out_file, records=None, gz=False, append_newline=True)
 
         return self

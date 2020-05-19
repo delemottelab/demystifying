@@ -30,6 +30,9 @@ class KLFeatureExtractor(FeatureExtractor):
             logger.debug('Using standard deviation of each feature as bin size.')
         self.feature_importances = None
         self.cluster_split_method = cluster_split_method
+        if self.use_regression:
+            raise NotImplementedError("KL divergence cannot be computed with regression.")
+
         logger.debug("Initializing KL with the following parameters: bin_width %s, cluster_split_method %s",
                      bin_width, cluster_split_method)
 

@@ -2,7 +2,7 @@ import logging
 import sys
 
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 
 from .feature_extractor import FeatureExtractor
 
@@ -20,7 +20,6 @@ class RandomForestFeatureExtractor(FeatureExtractor):
                  name="RF",
                  classifier_kwargs={
                      'n_estimators': 30,
-                     'njobs': -1
                  },
                  randomize=True,
                  one_vs_rest=True,
@@ -30,14 +29,18 @@ class RandomForestFeatureExtractor(FeatureExtractor):
                                   name=name,
                                   supervised=True,
                                   **kwargs)
-        self.one_vs_rest = one_vs_rest
         self.randomize = randomize
         self.classifier_kwargs = classifier_kwargs.copy()
         if not self.randomize:
             self.classifier_kwargs['random_state'] = 89274
+        if self.use_regression:
+            self.one_vs_rest = False
+        else:
+            self.one_vs_rest = one_vs_rest
+
         logger.debug("Initializing RF with the following parameters: "
                      " randomize %s, one_vs_rest %s, classifier_kwargs %s",
-                     randomize, one_vs_rest, classifier_kwargs)
+                     self.randomize, self.one_vs_rest, self.classifier_kwargs)
 
     def _train_one_vs_rest(self, data, labels):
         n_clusters = labels.shape[1]
@@ -46,7 +49,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
         classifiers = []
 
         for i_cluster in range(n_clusters):
-            classifiers.append(RandomForestClassifier(**self.classifier_kwargs))
+            classifiers.append(self._create_classifier())
             tmp_labels = np.zeros(n_points)
             tmp_labels[labels[:, i_cluster] == 1] = 1
 
@@ -60,7 +63,9 @@ class RandomForestFeatureExtractor(FeatureExtractor):
         if self.one_vs_rest:
             return self._train_one_vs_rest(train_set, train_labels)
         else:
-            classifier = RandomForestClassifier(**self.classifier_kwargs)
+            classifier = self._create_classifier()
+            if self.use_regression:
+                train_labels = train_labels.squeeze()
             classifier.fit(train_set, train_labels)
         return classifier
 
@@ -74,3 +79,7 @@ class RandomForestFeatureExtractor(FeatureExtractor):
             else:
                 feature_importances[:, i_cluster] = classifier.feature_importances_
         return feature_importances
+
+    def _create_classifier(self):
+        return RandomForestRegressor(**self.classifier_kwargs) if self.use_regression \
+            else RandomForestClassifier(**self.classifier_kwargs)

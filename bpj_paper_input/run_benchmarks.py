@@ -14,7 +14,7 @@ mpl.use('Agg')  # TO DISABLE GUI. USEFUL WHEN RUNNING ON CLUSTER WITHOUT X SERVE
 import argparse
 import numpy as np
 from benchmarking import computing
-from modules import visualization, utils
+from demystifying import visualization, utils
 
 logger = logging.getLogger("benchmarking")
 

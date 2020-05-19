@@ -24,7 +24,7 @@ class FeatureExtractor(object):
                  filter_by_distance_cutoff=False,
                  lower_bound_distance_cutoff=filtering.lower_bound_distance_cutoff_default,
                  upper_bound_distance_cutoff=filtering.upper_bound_distance_cutoff_default,
-                 use_inverse_distances=True,
+                 use_inverse_distances=False,
                  n_splits=3,
                  n_iterations=5,
                  name='FeatureExtractor',
@@ -32,13 +32,20 @@ class FeatureExtractor(object):
                  supervised=True,
                  remove_outliers=False,
                  label_names=None,
+                 use_regression=None,
                  shuffle_datasets=True):
         if samples is None:
-            raise Exception("Samples cannot be None")
+            raise ValueError("Samples cannot be None")
         self.samples = samples
-        self.labels, self.cluster_indices = utils.format_labels(labels)
-        self.mixed_classes = self.labels is not None and np.any(self.labels.sum(axis=1).max() != 1)
-        self.n_clusters = self.labels.shape[1]
+        self.supervised = supervised
+        if use_regression is None:
+            # If unsupervised or there are decimals in the labels, then we assume it is about regression
+            use_regression = abs(np.sum(np.round(labels) - labels)) > 1e-8 if self.supervised else True
+        self.use_regression = use_regression
+        self.labels, self.cluster_indices = utils.format_labels(labels, use_regression=use_regression)
+        self.mixed_classes = not use_regression and self.labels is not None and np.any(
+            self.labels.sum(axis=1).max() != 1)
+        self.n_clusters = 0 if self.labels is None else self.labels.shape[1]
         self.n_splits = n_splits
         self.n_iterations = n_iterations
         self.scaling = scaling
@@ -46,13 +53,12 @@ class FeatureExtractor(object):
         self.name = name
         if error_limit is None:
             # We expect the error to be below random guessing (assuming balanced datasets)
-            error_limit = 100 * (1 - 1. / self.n_clusters) + 1e-4
+            error_limit = 100 if self.use_regression else 100 * (1 - 1. / self.n_clusters) + 1e-4
         self.error_limit = error_limit
         self.use_inverse_distances = use_inverse_distances
         self.lower_bound_distance_cutoff = lower_bound_distance_cutoff
         self.upper_bound_distance_cutoff = upper_bound_distance_cutoff
         self.remove_outliers = remove_outliers
-        self.supervised = supervised
         self.shuffle_datasets = shuffle_datasets
         self.feature_importance = None
         self.std_feature_importance = None
@@ -62,16 +68,18 @@ class FeatureExtractor(object):
         self.label_names = label_names
         logger.debug("Initializing superclass FeatureExctractor '%s' with the following parameters: "
                      " n_splits %s, n_iterations %s, scaling %s, filter_by_distance_cutoff %s, lower_bound_distance_cutoff %s, "
-                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s, shuffle_datasets %s",
+                     " upper_bound_distance_cutoff %s, remove_outliers %s, use_inverse_distances %s, shuffle_datasets %s"
+                     "use_regression %s",
                      name, n_splits, n_iterations, scaling, filter_by_distance_cutoff, lower_bound_distance_cutoff,
-                     upper_bound_distance_cutoff, remove_outliers, use_inverse_distances, shuffle_datasets)
+                     upper_bound_distance_cutoff, remove_outliers, use_inverse_distances, shuffle_datasets,
+                     use_regression)
 
     def split_train_test(self):
         """
         Split the data into n_splits training and test sets
         """
         if self.n_splits < 2:
-            logger.info("Using all data in training and validation sets")
+            logger.debug("Using all data in training and validation sets")
             all_indices = np.empty((1, len(self.samples)))
             for i in range(len(self.samples)):
                 all_indices[0, i] = i
@@ -95,16 +103,29 @@ class FeatureExtractor(object):
         train_set = self.samples[train_ind, :]
         test_set = self.samples[test_ind, :]
 
-        test_labels = self.labels[test_ind, :]
-        train_labels = self.labels[train_ind, :]
+        test_labels = None if self.labels is None else self.labels[test_ind, :]
+        train_labels = None if self.labels is None else self.labels[train_ind, :]
 
         return train_set, test_set, train_labels, test_labels
 
     def train(self, train_set, train_labels):
         pass
 
+    def _train_unsupervised_methods_per_class(self, train_set, train_labels):
+        # Compute unsupervised learning per cluster
+        return np.array([
+            self.train(train_set[train_labels[:, cl] == 1], None)
+            for cl in range(self.n_clusters)
+        ])
+
     def get_feature_importance(self, model, samples, labels):
         pass
+
+    def _get_feature_importance_for_unsupervised_per_class(self, model, samples, labels):
+        imps = np.empty((samples.shape[1], len(model)))
+        for cl in range(self.n_clusters):
+            imps[:, cl] = self.get_feature_importance(model[cl], samples[labels[:, cl] == 1], None)
+        return imps
 
     def extract_features(self):
 

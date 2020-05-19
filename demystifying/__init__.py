@@ -7,5 +7,4 @@ for module in os.listdir(os.path.dirname(__file__)):
     if module != '__init__.py' and module[-3:] == '.py':
         __all__.append(module[:-3])
 
-from . import utils, postprocessing, feature_extraction
-#import modules.feature_extraction as feature_extraction
+from . import utils, postprocessing, feature_extraction, visualization

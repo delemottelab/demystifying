@@ -9,15 +9,15 @@ logging.basicConfig(
     format='%(asctime)s %(name)s-%(levelname)s: %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
-from modules import feature_extraction as fe, visualization
-from modules.data_generation import DataGenerator
+from demystifying import feature_extraction as fe, visualization
+from demystifying.data_generation import DataGenerator
 
 logger = logging.getLogger("dataGenNb")
 
 
 def run_toy_model(dg, data, labels, supervised=True, filetype="svg", n_iterations=10, variance_cutoff="1_components"):
     cluster_indices = labels.argmax(axis=1)
-    feature_to_resids = dg.feature_to_resids()
+    feature_to_resids = dg.feature_to_resids
     suffix = dg.test_model + "_" + dg.feature_type \
              + ("_supervised" if supervised else "_unsupervised") \
              + ("_var-cutoff=" + str(variance_cutoff) if not supervised else "")

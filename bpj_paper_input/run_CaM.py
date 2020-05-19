@@ -9,8 +9,8 @@ logging.basicConfig(
     datefmt='%Y-%m-%d %H:%M:%S')
 import numpy as np
 
-from modules import feature_extraction as fe, visualization
-from modules import relevance_propagation as relprop
+from demystifying import feature_extraction as fe, visualization
+from demystifying import relevance_propagation as relprop
 
 logger = logging.getLogger("CaM")
 

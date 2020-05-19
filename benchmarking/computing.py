@@ -11,8 +11,8 @@ logging.basicConfig(
 import os
 import glob
 import numpy as np
-from modules import visualization
-from modules.data_generation import DataGenerator
+from demystifying import visualization
+from demystifying.data_generation import DataGenerator
 from . import configuration
 
 logger = logging.getLogger("ex_benchmarking")

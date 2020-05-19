@@ -24,21 +24,28 @@ _gray = [33.0 / 256.0, 36.0 / 256.0, 50.0 / 256.0]
 _boxprops = dict(facecolor=_blue)
 
 
-def _plot_highligthed_residues(highlighted_residues, ax, linestyles=['dashed', 'solid', 'dotted', 'dashdot'],
+def _plot_highligthed_residues(highlighted_residues, ax,
+                               xvalues, importances,
+                               linestyles=['dashed', 'solid', 'dotted', 'dashdot'],
                                alpha=0.67, linewidth=1):
     if isinstance(highlighted_residues, dict):
         for idx, (label, residues) in enumerate(highlighted_residues.items()):
-            for r_idx, r in enumerate(residues):
-                ax.axvline(r, linestyle=linestyles[idx % len(linestyles)],
-                           label=label if r_idx == 0 else None,
-                           color=_blue,
-                           linewidth=linewidth,
-                           alpha=alpha)
+            if isinstance(residues, int):
+                importance = importances[xvalues==residues]
+                ax.scatter(residues, importance, marker='d', color=_blue, alpha=alpha)
+                ax.text(residues, importance, label, {'bbox': {'fc': 'white', 'alpha':0.5, 'pad':1}}, zorder=2.1) #, rotation=45)
+            else:
+                # If we have a list, we make vertical lines and create a legend
+                for r_idx, r in enumerate(residues):
+                    ax.axvline(r, linestyle=linestyles[idx % len(linestyles)],
+                               label=label if r_idx == 0 else None,
+                               color=_blue,
+                               linewidth=linewidth,
+                               alpha=alpha)
         ax.legend()
     else:
-        for r in highlighted_residues:
-            ax.axvline(r, linestyle=linestyles[0], label=None, color=_blue, linewidth=linewidth,
-                       alpha=alpha)
+        for r in np.array(highlighted_residues).flatten():
+            ax.axvline(r, linestyle=linestyles[0], label=None, color=_blue, linewidth=linewidth, alpha=alpha)
 
 
 def _insert_gaps(x_val, y_val):
@@ -85,7 +92,7 @@ def _vis_feature_importance(xvalues, importances, std_importance, ax, extractor_
     if average is not None:
         ax.plot(x_val, average, color='black', alpha=0.3, linestyle='--', label="Feature extractor average")
     if highlighted_residues is not None:
-        _plot_highligthed_residues(highlighted_residues, ax)
+        _plot_highligthed_residues(highlighted_residues, ax, xvalues=xvalues, importances=importances)
     ax.set_xlabel("Residue")
     ax.set_ylabel("Importance")
     if set_ylim:
@@ -306,7 +313,8 @@ def visualize(postprocessors,
               outfile=None,
               highlighted_residues=None,
               mixed_classes=False,
-              show_average=False):
+              show_average=False,
+              plot_title=None):
     """
     Plots the feature per residue.
     :param show_average:
@@ -340,7 +348,9 @@ def visualize(postprocessors,
         for pp, ax in zip(postprocessors, fig1.axes):
             _vis_feature_importance(pp[i_run].get_index_to_resid(), pp[i_run].importance_per_residue,
                                     pp[i_run].std_importance_per_residue,
-                                    ax, pp[i_run].extractor.name, colors[counter % len(colors)],
+                                    ax,
+                                    pp[i_run].extractor.name if plot_title is None else plot_title,
+                                    colors[counter % len(colors)],
                                     highlighted_residues=highlighted_residues,
                                     average=ave_feats if show_average else None)
             counter += 1

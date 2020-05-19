@@ -56,7 +56,7 @@ class DataProjector():
         if projection is None:
             if self.projection is not None:
                 proj = np.copy(self.projection)
-                logger.info("Scoring projections.")
+                logger.debug("Scoring projections.")
             else:
                 logger.warn("No projection data.")
                 return self
