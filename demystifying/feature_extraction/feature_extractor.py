@@ -34,6 +34,8 @@ class FeatureExtractor(object):
                  label_names=None,
                  use_regression=None,
                  shuffle_datasets=True):
+        if supervised and labels is None:
+            raise ValueError("Supervised learning requires the labels to be set")
         if samples is None:
             raise ValueError("Samples cannot be None")
         self.samples = samples
